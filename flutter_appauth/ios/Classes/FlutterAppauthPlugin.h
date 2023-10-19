@@ -14,4 +14,6 @@
 
 @property(nonatomic, strong, nullable) id<OIDExternalUserAgentSession> currentAuthorizationFlow;
 
+- (void)handleAuthorizeFinishWithError;
+
 @end

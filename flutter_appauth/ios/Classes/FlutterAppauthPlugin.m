@@ -91,6 +91,7 @@
 
 FlutterMethodChannel* channel;
 AppAuthAuthorization* authorization;
+AppAuthAuthorizationFinishWithErrorHandler handleFinishWithError;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     channel = [FlutterMethodChannel
@@ -109,6 +110,14 @@ AppAuthAuthorization* authorization;
                             andEventID:kAEGetURL];
 #else
     authorization = [[AppAuthIOSAuthorization alloc] init];
+  
+    __weak FlutterAppauthPlugin* weakInstance = instance;
+    handleFinishWithError = ^{
+        FlutterAppauthPlugin* strongInstance = weakInstance;
+        if (strongInstance != nil) {
+            strongInstance->_currentAuthorizationFlow = nil;
+        }
+    };
     
     [registrar addApplicationDelegate:instance];
 #endif
@@ -149,7 +158,7 @@ AppAuthAuthorization* authorization;
 
     if(requestParameters.serviceConfigurationParameters != nil) {
         OIDServiceConfiguration *serviceConfiguration = [self processServiceConfigurationParameters:requestParameters.serviceConfigurationParameters];
-        _currentAuthorizationFlow = [authorization performAuthorization:serviceConfiguration clientId:requestParameters.clientId clientSecret:requestParameters.clientSecret scopes:requestParameters.scopes redirectUrl:requestParameters.redirectUrl additionalParameters:requestParameters.additionalParameters preferEphemeralSession:requestParameters.preferEphemeralSession result:result exchangeCode:exchangeCode nonce:requestParameters.nonce];
+        _currentAuthorizationFlow = [authorization performAuthorization:serviceConfiguration clientId:requestParameters.clientId clientSecret:requestParameters.clientSecret scopes:requestParameters.scopes redirectUrl:requestParameters.redirectUrl additionalParameters:requestParameters.additionalParameters preferEphemeralSession:requestParameters.preferEphemeralSession result:result exchangeCode:exchangeCode nonce:requestParameters.nonce onFinishWithError:handleFinishWithError];
     } else if (requestParameters.discoveryUrl) {
         NSURL *discoveryUrl = [NSURL URLWithString:requestParameters.discoveryUrl];
         [OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:discoveryUrl
@@ -161,7 +170,7 @@ AppAuthAuthorization* authorization;
                 return;
             }
 
-            self->_currentAuthorizationFlow = [authorization performAuthorization:configuration clientId:requestParameters.clientId clientSecret:requestParameters.clientSecret scopes:requestParameters.scopes redirectUrl:requestParameters.redirectUrl additionalParameters:requestParameters.additionalParameters preferEphemeralSession:requestParameters.preferEphemeralSession result:result exchangeCode:exchangeCode nonce:requestParameters.nonce];
+            self->_currentAuthorizationFlow = [authorization performAuthorization:configuration clientId:requestParameters.clientId clientSecret:requestParameters.clientSecret scopes:requestParameters.scopes redirectUrl:requestParameters.redirectUrl additionalParameters:requestParameters.additionalParameters preferEphemeralSession:requestParameters.preferEphemeralSession result:result exchangeCode:exchangeCode nonce:requestParameters.nonce onFinishWithError:handleFinishWithError];
         }];
     } else {
         NSURL *issuerUrl = [NSURL URLWithString:requestParameters.issuer];
@@ -174,7 +183,7 @@ AppAuthAuthorization* authorization;
                 return;
             }
 
-            self->_currentAuthorizationFlow = [authorization performAuthorization:configuration clientId:requestParameters.clientId clientSecret:requestParameters.clientSecret scopes:requestParameters.scopes redirectUrl:requestParameters.redirectUrl additionalParameters:requestParameters.additionalParameters preferEphemeralSession:requestParameters.preferEphemeralSession result:result exchangeCode:exchangeCode nonce:requestParameters.nonce];
+            self->_currentAuthorizationFlow = [authorization performAuthorization:configuration clientId:requestParameters.clientId clientSecret:requestParameters.clientSecret scopes:requestParameters.scopes redirectUrl:requestParameters.redirectUrl additionalParameters:requestParameters.additionalParameters preferEphemeralSession:requestParameters.preferEphemeralSession result:result exchangeCode:exchangeCode nonce:requestParameters.nonce onFinishWithError:handleFinishWithError];
         }];
     }
 }
@@ -231,7 +240,7 @@ AppAuthAuthorization* authorization;
     EndSessionRequestParameters *requestParameters = [[EndSessionRequestParameters alloc] initWithArguments:arguments];
     if(requestParameters.serviceConfigurationParameters != nil) {
         OIDServiceConfiguration *serviceConfiguration = [self processServiceConfigurationParameters:requestParameters.serviceConfigurationParameters];
-        _currentAuthorizationFlow = [authorization performEndSessionRequest:serviceConfiguration requestParameters:requestParameters result:result];
+        _currentAuthorizationFlow = [authorization performEndSessionRequest:serviceConfiguration requestParameters:requestParameters result:result onFinishWithError:handleFinishWithError];
     } else if (requestParameters.discoveryUrl) {
         NSURL *discoveryUrl = [NSURL URLWithString:requestParameters.discoveryUrl];
         
@@ -243,7 +252,7 @@ AppAuthAuthorization* authorization;
                 return;
             }
             
-            self->_currentAuthorizationFlow = [authorization performEndSessionRequest:configuration requestParameters:requestParameters result:result];
+            self->_currentAuthorizationFlow = [authorization performEndSessionRequest:configuration requestParameters:requestParameters result:result onFinishWithError:handleFinishWithError];
         }];
     } else {
         NSURL *issuerUrl = [NSURL URLWithString:requestParameters.issuer];
@@ -255,7 +264,7 @@ AppAuthAuthorization* authorization;
                 return;
             }
             
-            self->_currentAuthorizationFlow = [authorization performEndSessionRequest:configuration requestParameters:requestParameters result:result];
+            self->_currentAuthorizationFlow = [authorization performEndSessionRequest:configuration requestParameters:requestParameters result:result onFinishWithError:handleFinishWithError];
         }];
     }
 }
